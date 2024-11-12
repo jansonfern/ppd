@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat em Tempo Real</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      margin-top: 20px;
+    }
+    #chat-room {
+      margin-top: 20px;
+      width: 80%;
+      max-width: 600px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+    }
+    #messages {
+      border: 1px solid #ddd;
+      padding: 10px;
+      height: 300px;
+      overflow-y: scroll;
+      margin-bottom: 10px;
+      flex-grow: 1;
+    }
+    #input {
+      width: 100%;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+    #room-select {
+      padding: 10px;
+      margin-top: 20px;
+      width: 80%;
+      max-width: 600px;
+    }
+    .message {
+      padding: 5px;
+      margin: 2px 0;
+      border-bottom: 1px solid #eee;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Chat em Tempo Real</h1>
+
+  <!-- Seleção de sala -->
+  <select id="room-select">
+    <option value="Sala 1">Sala 1</option>
+    <option value="Sala 2">Sala 2</option>
+    <option value="Sala 3">Sala 3</option>
+  </select>
+
+  <div id="chat-room">
+    <div id="messages"></div>
+    <input type="text" id="input" placeholder="Digite sua mensagem..." />
+  </div>
+
+  <script>
+    let socket;
+    const messagesDiv = document.getElementById('messages');
+    const inputField = document.getElementById('input');
+    const roomSelect = document.getElementById('room-select');
+    let currentRoom = roomSelect.value;
+
+    // Função para conectar ao WebSocket
+    function connectToSocket() {
+      socket = new WebSocket('ws://' + window.location.hostname + ':3000/chat');
+
+      socket.onopen = function() {
+        console.log('Conectado ao servidor');
+      };
+
+      socket.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        if (data.room === currentRoom) {
+          // Exibe a mensagem recebida
+          const messageElement = document.createElement('div');
+          messageElement.classList.add('message');
+          messageElement.textContent = data.message;
+          messagesDiv.appendChild(messageElement);
+          messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+      };
+
+      socket.onclose = function() {
+        console.log('Desconectado do servidor');
+      };
+    }
+
+    // Função para enviar a mensagem
+    function sendMessage() {
+      const message = inputField.value;
+      if (message.trim() !== '') {
+        const data = {
+          room: currentRoom,
+          message: message
+        };
+        socket.send(JSON.stringify(data));
+        inputField.value = '';
+      }
+    }
+
+    // Trocar de sala
+    roomSelect.addEventListener('change', function() {
+      currentRoom = roomSelect.value;
+      socket.close();  // Fechar a conexão atual
+      connectToSocket();  // Reabrir a conexão com a nova sala
+      messagesDiv.innerHTML = '';  // Limpar as mensagens antigas
+    });
+
+    // Enviar a mensagem ao pressionar Enter
+    inputField.addEventListener('keydown', function(event) {
+      if (event.key === 'Enter') {
+        sendMessage();
+      }
+    });
+
+    // Inicializa a primeira conexão WebSocket
+    connectToSocket();
+  </script>
+
+</body>
+</html>
